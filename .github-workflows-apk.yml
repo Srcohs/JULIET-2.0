@@ -1,0 +1,41 @@
+name: Build APK from zip
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: mkdir build && unzip -q juliet-ai-full.zip -d build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install
+        working-directory: build
+        run: npm install
+      - name: Build web files
+        working-directory: build
+        run: npm run build
+      - name: Add Android platform
+        working-directory: build
+        run: npx cap add android
+      - name: Permissions and icons
+        working-directory: build
+        run: bash scripts/apply-android.sh
+      - name: Sync
+        working-directory: build
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: build/android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Juliet-AI-apk
+          path: build/android/app/build/outputs/apk/debug/app-debug.apk
